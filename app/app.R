@@ -31,18 +31,18 @@ demo_customers <- data.frame(
 )
 
 demo_warehouses <- data.frame(
-  Warehouse_ID = "Existing_DC",
-  Latitude = 50.88,
-  Longitude = 4.70,
+  Warehouse_ID = "Antwerp_DC",
+  Latitude = 51.2194,
+  Longitude = 4.4025,
   Move_range_km = 0,
   Capacity = Inf,
   stringsAsFactors = FALSE
 )
 
 demo_suppliers <- data.frame(
-  Supplier_ID = "Rotterdam",
-  Latitude = 51.9244,
-  Longitude = 4.4777,
+  Supplier_ID = "Liege",
+  Latitude = 50.6326,
+  Longitude = 5.5797,
   Volume = 5900,
   Shipment_size = 24,
   stringsAsFactors = FALSE
@@ -364,6 +364,7 @@ ui <- fluidPage(
       width = 3,
       numericInput("k", "Total number of warehouses", 2, min = 1),
       actionButton("run", "Calculate", class = "btn-primary"),
+      verbatimTextOutput("calculation_status"),
       hr(),
       tabsetPanel(
         tabPanel("Parameters",
@@ -496,6 +497,14 @@ ui <- fluidPage(
 # ---------------------------------------------------------------------
 
 server <- function(input, output, session) {
+  calculation_status <- reactiveVal(
+    "Ready. Click Calculate to start."
+  )
+  
+  output$calculation_status <- renderText({
+    calculation_status()
+  })
+  
   tables <- reactiveValues(
     customers = demo_customers,
     warehouses = demo_warehouses,
@@ -618,10 +627,103 @@ server <- function(input, output, session) {
       setView(4.35, 50.85, 6)
   })
   
-  observeEvent(input$recenter, {
-    leafletProxy("map") |>
-      setView(input$map_lon, input$map_lat, input$map_zoom)
-  })
+  observeEvent(input$recenter, {observeEvent(input$run, {
+    result(NULL)
+    
+    stage <- "Reading parameters"
+    calculation_status("Calculate received. Preparing the model...")
+    message("[CoG] Calculate received")
+    
+    tryCatch(
+      {
+        p <- params()
+        
+        stage <- "Preparing input tables"
+        message("[CoG] ", stage)
+        
+        w <- tables$warehouses
+        
+        if (!p$predefined) {
+          w <- w[FALSE, , drop = FALSE]
+        }
+        
+        stage <- "Validating input data"
+        message("[CoG] ", stage)
+        
+        d <- prepare_data(
+          tables$customers,
+          w,
+          tables$suppliers,
+          p
+        )
+        
+        stage <- "Running the optimisation solver"
+        message("[CoG] ", stage)
+        
+        calculation_status(
+          paste(
+            "Running optimisation:",
+            nrow(d$customers), "customers;",
+            p$k, "warehouses;",
+            p$starts, "start(s)."
+          )
+        )
+        
+        r <- withProgress(
+          message = "Optimising warehouse network",
+          value = 0,
+          {
+            incProgress(0.1, detail = "Starting solver")
+            
+            solution <- solve_network(
+              d$customers,
+              d$warehouses,
+              d$suppliers,
+              p
+            )
+            
+            incProgress(0.9, detail = "Calculation finished")
+            solution
+          }
+        )
+        
+        stage <- "Publishing the results"
+        result(r)
+        
+        calculation_status(
+          sprintf(
+            paste0(
+              "Calculation completed.\n",
+              "Objective: %.2f\n",
+              "Warehouses: %d\n",
+              "Check the Map and Results tabs."
+            ),
+            r$objective,
+            nrow(r$warehouses)
+          )
+        )
+        
+        message("[CoG] Calculation completed")
+      },
+      
+      error = function(e) {
+        error_text <- paste0(
+          "Calculation failed.\n",
+          "Stage: ", stage, "\n",
+          "Error: ", conditionMessage(e)
+        )
+        
+        calculation_status(error_text)
+        message("[CoG] ", error_text)
+        
+        showNotification(
+          error_text,
+          type = "error",
+          duration = NULL
+        )
+      }
+    )
+  }, ignoreInit = TRUE)})
   
   observe({
     r <- result()
