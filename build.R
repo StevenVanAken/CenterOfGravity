@@ -1,5 +1,5 @@
 # Run from the warehouse-cog project root.
-setwd("C:/Users/Steve/OneDrive/R/warehouse-cog/")
+setwd("I:/Github/CenterOfGravity/")
 
 required <- c(
   "shinylive",
