@@ -1,3 +1,6 @@
+# Run from the warehouse-cog project root.
+setwd("C:/Users/Steve/OneDrive/R/warehouse-cog/")
+
 required <- c(
   "shinylive",
   "httpuv",
@@ -5,7 +8,8 @@ required <- c(
   "leaflet",
   "DT",
   "geosphere",
-  "lpSolve"
+  "lpSolve",
+  "xfun"
 )
 
 missing <- required[
@@ -19,25 +23,20 @@ if (length(missing)) {
     call. = FALSE
   )
 }
-if (!file.exists("app/app.R")) {
+
+if (!file.exists("C:/Users/Steve/OneDrive/R/warehouse-cog/app/app.R")) {
   stop(
-    "Cannot find app/app.R. Current working directory: ",
-    getwd(),
+    "Expected app/app.R. Run this script from the project root.",
     call. = FALSE
   )
 }
 
+# Export application, web runtime, and available WASM package binaries.
 shinylive::export(
   appdir = "app",
-  destdir = "docs",
+  destdir = "site",
   wasm_packages = TRUE
 )
 
-# Tell GitHub Pages to serve the export without Jekyll processing.
-file.create("docs/.nojekyll")
-
-# Confirm the website entry point exists.
-stopifnot(file.exists("docs/index.html"))
-
-message("Export ready. Preview with:")
-message('httpuv::runStaticServer("docs")')
+message("Export finished. Preview with:")
+message('httpuv::runStaticServer("site")')

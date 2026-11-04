@@ -4,7 +4,7 @@
 #
 # The Shiny process receives uploaded data. Unlike a browser-only tool,
 # deploying this app remotely sends the data to the Shiny server.
-setwd
+
 library(shiny)
 library(leaflet)
 library(DT)
@@ -368,7 +368,7 @@ ui <- fluidPage(
       hr(),
       tabsetPanel(
         tabPanel("Parameters",
-                 selectInput("units", "Display distance", "Kilometers"),
+                 selectInput("units", "Display distance", c("Kilometers", "Miles")),
                  numericInput("circuity", "Distance circuity factor", 1.25, min = 1),
                  numericInput("lead", "Lead-time distance (display units)", 200, min = 0),
                  checkboxInput("improve", "Improve service level", FALSE),
@@ -476,7 +476,7 @@ ui <- fluidPage(
                  fileInput("suppliers_csv", "CSV upload: header required"),
                  DTOutput("suppliers_table")
         ),
-        tabPanel("Results - Disabled",
+        tabPanel("Results",
                  h4("Network totals"),
                  DTOutput("totals"),
                  h4("Warehouse report"),
@@ -882,7 +882,7 @@ server <- function(input, output, session) {
          type = "l", lwd = 2, col = "#2166ac",
          xlab = "Shipment size (% FTL)",
          ylab = "Transport cost (% FTL cost)",
-         main = "Cubic Bezier transport-rate curve (how shipment cost changes with shipment size)")
+         main = "Cubic Bezier transport-rate curve")
     abline(0, 1, lty = 2, col = "grey60")
     grid()
   })
